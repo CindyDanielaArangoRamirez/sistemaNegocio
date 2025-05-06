@@ -1,0 +1,85 @@
+/* Estilos generales */
+QWidget {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    font-size: 15.87px; /* 15% más grande */
+}
+
+/* Botones principales */
+QPushButton {
+    background-color: #3498db;
+    color: white;
+    border: none;
+    padding: 9px 14px; /* 15% más que 8px 12px */
+    border-radius: 4.6px; /* 15% más que 4px */
+    min-width: 92px; /* 15% más que 80px */
+}
+
+QPushButton:hover {
+    background-color: #2980b9;
+}
+
+QPushButton:disabled {
+    background-color: #95a5a6;
+}
+
+/* Botones de acción */
+QPushButton#addButton {
+    background-color: #2ecc71;
+}
+
+QPushButton#addButton:hover {
+    background-color: #27ae60;
+}
+
+QPushButton#deleteButton {
+    background-color: #e74c3c;
+}
+
+QPushButton#deleteButton:hover {
+    background-color: #c0392b;
+}
+
+/* Campos de entrada */
+QLineEdit, QComboBox, QDateEdit, QSpinBox {
+    padding: 6.9px; /* 15% más que 6px */
+    border: 1px solid #bdc3c7;
+    border-radius: 4.6px; /* 15% más que 4px */
+    min-height: 27.6px; /* 15% más que 24px */
+}
+
+/* Tablas */
+QTableWidget {
+    background-color: white;
+    alternate-background-color: #f8f9fa;
+    gridline-color: #dee2e6;
+    selection-background-color: #3498db;
+    selection-color: white;
+}
+
+QHeaderView::section {
+    background-color: #3498db;
+    color: white;
+    padding: 6.9px; /* 15% más que 6px */
+    border: none;
+}
+
+/* Barra lateral */
+QFrame#sidebar {
+    background-color: #2c3e50;
+}
+
+QPushButton#sidebarButton {
+    background-color: transparent;
+    color: white;
+    text-align: left;
+    padding: 11.5px 17.25px; /* 15% más que 10px 15px */
+    border-radius: 0;
+}
+
+QPushButton#sidebarButton:hover {
+    background-color: #34495e;
+}
+
+QPushButton#sidebarButton:checked {
+    background-color: #3498db;
+}
