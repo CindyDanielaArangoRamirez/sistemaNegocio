@@ -1,25 +1,41 @@
+# app/controllers/history_controller.py
 from app.models.sale_model import SaleModel
-from datetime import datetime, timedelta
 
 class HistoryController:
-    def __init__(self):
-        self.sale_model = SaleModel()
+    @staticmethod
+    def get_formatted_sales_history():
+        """
+        Obtiene el historial de ventas agrupado por fecha y formateado para la vista.
+        Devuelve un diccionario donde las claves son fechas y los valores son
+        diccionarios con 'base_amount', 'items', 'total_day_sales_value', 'net_profit'.
+        """
+        # SaleModel.get_sales_history_grouped_by_date() ya devuelve los datos bastante bien estructurados.
+        # El controlador aquí podría hacer algún pre-procesamiento adicional si la vista lo necesitara,
+        # pero por ahora, podemos pasar directamente los datos del modelo.
+        history_data = SaleModel.get_sales_history_grouped_by_date()
+        
+        # Ejemplo de cómo podrías querer ordenar o transformar las fechas si no vienen ya como necesitas:
+        # (Aunque el modelo ya debería ordenarlos por fecha descendente)
+        # sorted_history = dict(sorted(history_data.items(), key=lambda item: item[0], reverse=True))
+        # return sorted_history
+        return history_data
 
-    def get_sales_by_date_range(self, start_date, end_date):
-        """Obtener ventas por rango de fechas"""
-        try:
-            # Ajustar las fechas para incluir todo el día final
-            end_date = (datetime.strptime(end_date, "%Y-%m-%d") + 
-                       timedelta(days=1)).strftime("%Y-%m-%d")
-            return self.sale_model.get_sales_by_date(start_date, end_date)
-        except Exception as e:
-            print(f"Error al obtener historial: {e}")
-            return []
+    @staticmethod
+    def clear_all_sales_history():
+        """
+        Elimina todo el historial de ventas.
+        Devuelve True si fue exitoso, False en caso contrario.
+        """
+        success = SaleModel.delete_all_sales_history()
+        if success:
+            print("Sales history cleared successfully.")
+        else:
+            print("Failed to clear sales history.")
+        return success
 
-    def get_sale_details(self, sale_id):
-        """Obtener detalles de una venta específica"""
-        try:
-            return self.sale_model.get_sale_details(sale_id)
-        except Exception as e:
-            print(f"Error al obtener detalles de venta: {e}")
-            return None
+    # Si necesitas filtrar por fecha, la lógica iría aquí o en el modelo.
+    # Por ejemplo:
+    # @staticmethod
+    # def get_sales_history_for_date(target_date_str): # target_date_str en formato 'YYYY-MM-DD'
+    #     all_history = SaleModel.get_sales_history_grouped_by_date()
+    #     return {target_date_str: all_history.get(target_date_str)} if target_date_str in all_history else {}

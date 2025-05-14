@@ -1,153 +1,149 @@
-from PyQt5.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
-                             QPushButton, QFrame, QStackedWidget, QLabel, QSizePolicy)
-from PyQt5.QtCore import Qt
-from app.views.sales_view import SalesView
-from app.views.products_view import ProductsView
-from app.views.history_view import HistoryView
+# app/views/main_window.py
+from PyQt5.QtWidgets import (
+    QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
+    QPushButton, QFrame, QStackedWidget, QLabel, QSizePolicy, QMessageBox
+)
+from PyQt5.QtCore import Qt, QSize
+# from PyQt5.QtGui import QIcon, QPixmap
+
+from .sales_view import SalesView
+from .products_view import ProductsView
+from .history_view import HistoryView
+from .login_view import LoginView
+from PyQt5.QtWidgets import QApplication
 
 class MainWindow(QMainWindow):
-    def __init__(self):
+    def __init__(self, user_data):
         super().__init__()
-        self.setWindowTitle("Sistema de Ferretería")
-        self.setGeometry(100, 100, 1024, 768)
+        self.current_user_data = user_data
+        username_display = "N/A"
+        if self.current_user_data:
+            try:
+                username_display = self.current_user_data['username']
+            except (KeyError, TypeError, IndexError):
+                try:
+                    username_display = self.current_user_data[1]
+                except (IndexError, TypeError):
+                    print("Advertencia (MainWindow): No se pudo obtener 'username' de user_data.")
+        
+        self.setWindowTitle(f"Sistema de Ferretería - Usuario: {username_display}")
+        self.showMaximized()
         self.setup_ui()
-    
+
     def setup_ui(self):
-        # Layout principal
-        main_widget = QWidget()
-        main_layout = QHBoxLayout()
-        main_widget.setLayout(main_layout)
-        self.setCentralWidget(main_widget)
+        self.main_central_widget = QWidget()
+        self.setCentralWidget(self.main_central_widget)
+        self.main_app_layout = QHBoxLayout(self.main_central_widget)
+        self.main_app_layout.setContentsMargins(0, 0, 0, 0)
+        self.main_app_layout.setSpacing(0)
+
+        self.sidebar_frame = QFrame()
+        self.sidebar_frame.setObjectName("sidebar")
+        self.sidebar_frame.setFixedWidth(220)
+        sidebar_internal_layout = QVBoxLayout(self.sidebar_frame)
+        sidebar_internal_layout.setContentsMargins(10, 15, 10, 15)
+        sidebar_internal_layout.setSpacing(8)
+        sidebar_internal_layout.setAlignment(Qt.AlignTop)
+
+        logo_text_label = QLabel("Ferretería XYZ")
+        logo_text_label.setObjectName("sidebarTitle")
+        logo_text_label.setAlignment(Qt.AlignCenter)
+        logo_text_label.setStyleSheet("color: white; font-size: 16pt; font-weight: bold; padding-bottom: 15px; border-bottom: 1px solid #34495e;")
+        sidebar_internal_layout.addWidget(logo_text_label)
+
+        self.sales_button = self.create_sidebar_button("📈 Realizar Venta")
+        self.products_button = self.create_sidebar_button("📦 Productos")
+        self.history_button = self.create_sidebar_button("📋 Historial Ventas")
         
-        # Sidebar
-        sidebar = QFrame()
-        sidebar.setObjectName("sidebar")
-        sidebar.setFixedWidth(200)
-        sidebar_layout = QVBoxLayout()
-        sidebar_layout.setContentsMargins(0, 0, 0, 0)
-        sidebar_layout.setSpacing(0)
-        sidebar.setLayout(sidebar_layout)
+        sidebar_internal_layout.addWidget(self.sales_button)
+        sidebar_internal_layout.addWidget(self.products_button)
+        sidebar_internal_layout.addWidget(self.history_button)
+        sidebar_internal_layout.addStretch(1)
+        self.logout_button = self.create_sidebar_button("🚪 Cerrar Sesión", is_logout_button=True)
+        sidebar_internal_layout.addWidget(self.logout_button)
+        self.main_app_layout.addWidget(self.sidebar_frame)
+
+        self.content_display_area = QStackedWidget()
+        self.content_display_area.setObjectName("contentArea")
+
+        self.sales_view_instance = SalesView(self.current_user_data)
+        self.products_view_instance = ProductsView()
+        self.history_view_instance = HistoryView()
+
+        self.content_display_area.addWidget(self.sales_view_instance)    # Index 0
+        self.content_display_area.addWidget(self.products_view_instance) # Index 1
+        self.content_display_area.addWidget(self.history_view_instance)  # Index 2
         
-        # Logo o título
-        logo = QLabel("Ferretería XYZ")
-        logo.setStyleSheet("""
-            color: white;
-            font-size: 18px;
-            font-weight: bold;
-            padding: 15px;
-            qproperty-alignment: AlignCenter;
-            border-bottom: 1px solid #2c3e50;
-        """)
-        
-        # Botones del sidebar
-        self.sales_btn = self.create_sidebar_button("Realizar Venta")
-        self.products_btn = self.create_sidebar_button("Productos")
-        self.history_btn = self.create_sidebar_button("Historial")
-        
-        # Espaciador
-        spacer = QWidget()
-        spacer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        
-        # Botón de salir
-        self.logout_btn = self.create_sidebar_button("Cerrar Sesión", is_logout=True)
-        
-        # Agregar al sidebar
-        sidebar_layout.addWidget(logo)
-        sidebar_layout.addWidget(self.sales_btn)
-        sidebar_layout.addWidget(self.products_btn)
-        sidebar_layout.addWidget(self.history_btn)
-        sidebar_layout.addWidget(spacer)
-        sidebar_layout.addWidget(self.logout_btn)
-        
-        # Área de contenido
-        self.content_area = QStackedWidget()
-        
-        # Crear vistas
-        self.sales_view = SalesView()
-        self.products_view = ProductsView()
-        self.history_view = HistoryView()
-        
-        # Agregar vistas
-        self.content_area.addWidget(self.sales_view)
-        self.content_area.addWidget(self.products_view)
-        self.content_area.addWidget(self.history_view)
-        
-        # Conectar botones
-        self.sales_btn.clicked.connect(lambda: self.change_view(0))
-        self.products_btn.clicked.connect(lambda: self.change_view(1))
-        self.history_btn.clicked.connect(lambda: self.change_view(2))
-        self.logout_btn.clicked.connect(self.close)
-        
-        # Agregar al layout principal
-        main_layout.addWidget(sidebar)
-        main_layout.addWidget(self.content_area)
-        
-        # Mostrar vista inicial
-        self.change_view(0)
-    
-    def create_sidebar_button(self, text, is_logout=False):
-        btn = QPushButton(text)
-        btn.setCursor(Qt.PointingHandCursor)
-        
-        if is_logout:
-            btn.setStyleSheet("""
-                QPushButton {
-                    background-color: #e74c3c;
-                    color: white;
-                    padding: 12px;
-                    border: none;
-                    text-align: left;
-                    padding-left: 20px;
-                }
-                QPushButton:hover {
-                    background-color: #c0392b;
-                }
-            """)
+        self.main_app_layout.addWidget(self.content_display_area, 1)
+
+        self.sales_button.clicked.connect(lambda: self.switch_view(0, self.sales_button))
+        self.products_button.clicked.connect(lambda: self.switch_view(1, self.products_button))
+        self.history_button.clicked.connect(lambda: self.switch_view(2, self.history_button))
+        self.logout_button.clicked.connect(self.handle_logout)
+
+        self.switch_view(0, self.sales_button)
+
+    def create_sidebar_button(self, text, is_logout_button=False):
+        button = QPushButton(text)
+        button.setCursor(Qt.PointingHandCursor)
+        button.setObjectName("sidebarButton")
+        if is_logout_button:
+            button.setStyleSheet("""
+                QPushButton#sidebarButton {
+                    background-color: #c0392b; color: white; border: none;
+                    padding: 12px; text-align: left; padding-left: 20px; font-size: 10pt;
+                } QPushButton#sidebarButton:hover { background-color: #e74c3c; }""")
         else:
-            btn.setStyleSheet("""
-                QPushButton {
-                    background-color: transparent;
-                    color: white;
-                    padding: 12px;
-                    border: none;
-                    text-align: left;
-                    padding-left: 20px;
+            button.setStyleSheet("""
+                QPushButton#sidebarButton {
+                    background-color: transparent; color: #ecf0f1; border: none;
+                    padding: 12px; text-align: left; padding-left: 20px; font-size: 10pt;
                 }
-                QPushButton:hover {
-                    background-color: #2c3e50;
-                }
-            """)
+                QPushButton#sidebarButton:hover { background-color: #34495e; }
+                QPushButton#sidebarButton[selected="true"] {
+                    background-color: #2980b9; border-left: 3px solid #3498db;
+                }""")
+        return button
+
+    def switch_view(self, index, clicked_button):
+        """Cambia la vista en el QStackedWidget, actualiza el estilo del botón activo,
+           y refresca los datos de la vista que se va a mostrar si es necesario."""
         
-        return btn
-    
-    def change_view(self, index):
-        self.content_area.setCurrentIndex(index)
+        # --- LÓGICA DE REFRESCO AÑADIDA AQUÍ ---
+        if index == 0: # SalesView (Índice 0)
+            if hasattr(self, 'sales_view_instance') and self.sales_view_instance:
+                print("MainWindow: Refrescando productos para SalesView...")
+                self.sales_view_instance.load_products_for_autocompleter_and_cache()
+                self.sales_view_instance.display_low_stock_warning() # También refrescar aviso
+
+        elif index == 1: # ProductsView (Índice 1)
+            if hasattr(self, 'products_view_instance') and self.products_view_instance:
+                print("MainWindow: Refrescando tabla de productos en ProductsView...")
+                self.products_view_instance.load_products_and_setup_completer() # Este método debe recargar todo
+
+        elif index == 2: # HistoryView (Índice 2)
+            if hasattr(self, 'history_view_instance') and self.history_view_instance:
+                print("MainWindow: Refrescando historial de ventas en HistoryView...")
+                if hasattr(self.history_view_instance, 'all_history_data_cache'): # Verificar si el cache existe
+                    self.history_view_instance.all_history_data_cache.clear()
+                self.history_view_instance.load_and_display_history()
+        # --- FIN LÓGICA DE REFRESCO ---
         
-        # Actualizar estilos de botones activos
-        buttons = [self.sales_btn, self.products_btn, self.history_btn]
-        for i, btn in enumerate(buttons):
-            if i == index:
-                btn.setStyleSheet("""
-                    QPushButton {
-                        background-color: #3498db;
-                        color: white;
-                        padding: 12px;
-                        border: none;
-                        text-align: left;
-                        padding-left: 20px;
-                    }
-                """)
-            else:
-                btn.setStyleSheet("""
-                    QPushButton {
-                        background-color: transparent;
-                        color: white;
-                        padding: 12px;
-                        border: none;
-                        text-align: left;
-                        padding-left: 20px;
-                    }
-                    QPushButton:hover {
-                        background-color: #2c3e50;
-                    }
-                """)
+        self.content_display_area.setCurrentIndex(index) # Cambiar la vista actual
+        
+        # Actualizar estilos de los botones del sidebar
+        all_sidebar_buttons = [self.sales_button, self.products_button, self.history_button]
+        for btn in all_sidebar_buttons:
+            is_selected = (btn == clicked_button)
+            btn.setProperty("selected", is_selected) # True o False
+            btn.style().unpolish(btn)
+            btn.style().polish(btn)
+            # btn.update() # update() es menos común aquí, polish/unpolish suele ser suficiente
+
+    def handle_logout(self):
+        reply = QMessageBox.question(self, "Cerrar Sesión",
+                                     "¿Está seguro de que desea cerrar la sesión?",
+                                     QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+        if reply == QMessageBox.Yes:
+            self.close()
+            QApplication.instance().quit()

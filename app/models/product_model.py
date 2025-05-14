@@ -1,58 +1,96 @@
+# app/models/product_model.py
+import sqlite3 # Importar para sqlite3.Error
 from database.db_connection import create_connection
 
 class ProductModel:
     @staticmethod
-    def create_product(nombre, cantidad, precio):
-        """Crear un nuevo producto"""
+    def add_product(name, quantity_available, sale_price, purchase_price):
         conn = create_connection()
-        if conn is not None:
+        if conn:
             try:
                 cursor = conn.cursor()
                 cursor.execute(
-                    "INSERT INTO productos (nombre, cantidad_disponible, precio_unitario) VALUES (?, ?, ?)",
-                    (nombre, cantidad, precio)
+                    "INSERT INTO products (name, quantity_available, sale_price, purchase_price) VALUES (?, ?, ?, ?)",
+                    (name, quantity_available, sale_price, purchase_price)
                 )
                 conn.commit()
                 return cursor.lastrowid
-            except Exception as e:
-                print(f"Error al crear producto: {e}")
+            except sqlite3.Error as e:
+                print(f"Error adding product: {e}")
                 return None
             finally:
                 conn.close()
         return None
 
     @staticmethod
-    def get_all_products():
-        """Obtener todos los productos"""
+    def get_all_products_for_management():
+        """Obtener TODOS los productos (activos e inactivos) para la vista de gestión."""
         conn = create_connection()
-        if conn is not None:
+        if conn:
             try:
                 cursor = conn.cursor()
                 cursor.execute(
-                    "SELECT id, nombre, cantidad_disponible, precio_unitario FROM productos"
+                    "SELECT id, name, quantity_available, sale_price, purchase_price, is_active FROM products ORDER BY name ASC"
                 )
                 return cursor.fetchall()
-            except Exception as e:
-                print(f"Error al obtener productos: {e}")
+            except sqlite3.Error as e:
+                print(f"Error fetching all products for management: {e}")
                 return []
             finally:
                 conn.close()
         return []
 
     @staticmethod
-    def search_products(search_term):
-        """Buscar productos por nombre (autocompletado)"""
+    def get_active_products_for_sale():
+        """Obtener solo los productos activos (para ventas, etc.)."""
         conn = create_connection()
-        if conn is not None:
+        if conn:
             try:
                 cursor = conn.cursor()
                 cursor.execute(
-                    "SELECT id, nombre, cantidad_disponible, precio_unitario FROM productos WHERE nombre LIKE ?",
-                    (f'{search_term}%',)
+                    "SELECT id, name, quantity_available, sale_price, purchase_price, is_active FROM products WHERE is_active = 1 ORDER BY name ASC"
                 )
                 return cursor.fetchall()
-            except Exception as e:
-                print(f"Error al buscar productos: {e}")
+            except sqlite3.Error as e:
+                print(f"Error fetching active products: {e}")
+                return []
+            finally:
+                conn.close()
+        return []
+
+    @staticmethod
+    def search_products_for_management(search_term):
+        """Buscar TODOS los productos (activos e inactivos) por nombre para la vista de gestión."""
+        conn = create_connection()
+        if conn:
+            try:
+                cursor = conn.cursor()
+                cursor.execute(
+                    "SELECT id, name, quantity_available, sale_price, purchase_price, is_active FROM products WHERE name LIKE ? ORDER BY name ASC",
+                    (f"%{search_term}%",)
+                )
+                return cursor.fetchall()
+            except sqlite3.Error as e:
+                print(f"Error searching products for management: {e}")
+                return []
+            finally:
+                conn.close()
+        return []
+
+    @staticmethod
+    def search_active_products_for_sale(search_term):
+        """Buscar solo productos ACTIVOS por nombre (para ventas, etc.)."""
+        conn = create_connection()
+        if conn:
+            try:
+                cursor = conn.cursor()
+                cursor.execute(
+                    "SELECT id, name, quantity_available, sale_price, purchase_price, is_active FROM products WHERE name LIKE ? AND is_active = 1 ORDER BY name ASC",
+                    (f"%{search_term}%",)
+                )
+                return cursor.fetchall()
+            except sqlite3.Error as e:
+                print(f"Error searching active products: {e}")
                 return []
             finally:
                 conn.close()
@@ -60,81 +98,112 @@ class ProductModel:
 
     @staticmethod
     def get_product_by_id(product_id):
-        """Obtener producto por ID"""
         conn = create_connection()
-        if conn is not None:
+        if conn:
             try:
                 cursor = conn.cursor()
                 cursor.execute(
-                    "SELECT id, nombre, cantidad_disponible, precio_unitario FROM productos WHERE id = ?",
+                    "SELECT id, name, quantity_available, sale_price, purchase_price, is_active FROM products WHERE id = ?",
                     (product_id,)
                 )
                 return cursor.fetchone()
-            except Exception as e:
-                print(f"Error al obtener producto: {e}")
+            except sqlite3.Error as e:
+                print(f"Error fetching product by ID: {e}")
                 return None
             finally:
                 conn.close()
         return None
 
     @staticmethod
-    def update_product(product_id, nombre, cantidad, precio):
-        """Actualizar un producto existente"""
+    def update_product(product_id, name, quantity_available, sale_price, purchase_price):
         conn = create_connection()
-        if conn is not None:
+        if conn:
             try:
                 cursor = conn.cursor()
                 cursor.execute(
-                    """UPDATE productos 
-                    SET nombre = ?, cantidad_disponible = ?, precio_unitario = ?, fecha_actualizacion = CURRENT_TIMESTAMP 
-                    WHERE id = ?""",
-                    (nombre, cantidad, precio, product_id)
+                    """UPDATE products
+                       SET name = ?, quantity_available = ?, sale_price = ?, purchase_price = ?
+                       WHERE id = ?""",
+                    (name, quantity_available, sale_price, purchase_price, product_id)
                 )
                 conn.commit()
                 return cursor.rowcount > 0
-            except Exception as e:
-                print(f"Error al actualizar producto: {e}")
+            except sqlite3.Error as e:
+                print(f"Error updating product: {e}")
                 return False
             finally:
                 conn.close()
         return False
 
     @staticmethod
-    def delete_product(product_id):
-        """Eliminar un producto"""
+    def soft_delete_product(product_id):
         conn = create_connection()
-        if conn is not None:
+        if conn:
             try:
                 cursor = conn.cursor()
                 cursor.execute(
-                    "DELETE FROM productos WHERE id = ?",
-                    (product_id,)
+                    "UPDATE products SET is_active = 0 WHERE id = ?", (product_id,)
                 )
                 conn.commit()
                 return cursor.rowcount > 0
-            except Exception as e:
-                print(f"Error al eliminar producto: {e}")
+            except sqlite3.Error as e:
+                print(f"Error soft deleting product: {e}")
                 return False
             finally:
                 conn.close()
         return False
 
     @staticmethod
-    def update_stock(product_id, cantidad_vendida):
-        """Actualizar el stock de un producto después de una venta"""
+    def restore_product(product_id):
         conn = create_connection()
-        if conn is not None:
+        if conn:
             try:
                 cursor = conn.cursor()
                 cursor.execute(
-                    "UPDATE productos SET cantidad_disponible = cantidad_disponible - ? WHERE id = ?",
-                    (cantidad_vendida, product_id)
+                    "UPDATE products SET is_active = 1 WHERE id = ?", (product_id,)
                 )
                 conn.commit()
                 return cursor.rowcount > 0
-            except Exception as e:
-                print(f"Error al actualizar stock: {e}")
+            except sqlite3.Error as e:
+                print(f"Error restoring product: {e}")
                 return False
             finally:
                 conn.close()
         return False
+
+    @staticmethod
+    def update_stock(product_id, quantity_sold):
+        conn = create_connection()
+        if conn:
+            try:
+                cursor = conn.cursor()
+                cursor.execute(
+                    "UPDATE products SET quantity_available = quantity_available - ? WHERE id = ?",
+                    (quantity_sold, product_id)
+                )
+                conn.commit()
+                return cursor.rowcount > 0
+            except sqlite3.Error as e:
+                print(f"Error updating stock: {e}")
+                return False
+            finally:
+                conn.close()
+        return False
+
+    @staticmethod
+    def get_low_stock_products(threshold=0):
+        conn = create_connection()
+        if conn:
+            try:
+                cursor = conn.cursor()
+                cursor.execute(
+                    "SELECT id, name, quantity_available, is_active FROM products WHERE quantity_available <= ? AND is_active = 1 ORDER BY quantity_available ASC, name ASC",
+                    (threshold,)
+                )
+                return cursor.fetchall()
+            except sqlite3.Error as e:
+                print(f"Error fetching low stock products: {e}")
+                return []
+            finally:
+                conn.close()
+        return []
