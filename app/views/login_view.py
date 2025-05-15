@@ -1,10 +1,12 @@
 # app/views/login_view.py
+import os
 from PyQt5.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
     QPushButton, QMessageBox, QFrame, QApplication, QInputDialog # QDialog para herencia
 )
 from PyQt5.QtCore import Qt
-# from PyQt5.QtGui import QPixmap
+from PyQt5.QtCore import QSize
+from PyQt5.QtGui import QPixmap
 
 from app.controllers.auth_controller import AuthController
 from .register_view import RegisterView
@@ -14,11 +16,13 @@ from .register_view import RegisterView
 class LoginView(QDialog): # Cambiado de nuevo a QDialog
     def __init__(self, parent=None): # QDialogs suelen tener un parent
         super().__init__(parent)
+        self.store_name = "Ferretería YD"
+        self.logo_file_name = "logo_ferreteria.png.png"
         self.user_logged_in_data = None # Para almacenar los datos del usuario tras un login exitoso
         self.init_ui()
 
     def init_ui(self):
-        self.setWindowTitle("Inicio de Sesión - Ferretería XYZ")
+        self.setWindowTitle("Inicio de Sesión - {self.store_name}")
 
         # --- Estilo de Pantalla Completa y Contenedor Central ---
         # screen_geometry = QApplication.primaryScreen().geometry()
@@ -51,7 +55,41 @@ class LoginView(QDialog): # Cambiado de nuevo a QDialog
         dialog_main_layout.addWidget(self.central_container) # Añade el frame al layout del diálogo
         # --- Fin Estilo ---
 
-        title_label = QLabel("Ferretería XYZ")
+
+        # --- INICIO: SECCIÓN DEL LOGO ---
+        logo_display_label = QLabel() 
+        logo_display_label.setAlignment(Qt.AlignCenter)
+        try:
+            # Estrategia de ruta: relativa al directorio de ESTE archivo (login_view.py)
+            current_file_dir = os.path.dirname(os.path.abspath(__file__))
+            project_root_dir = os.path.abspath(os.path.join(current_file_dir, "..", "..")) 
+            logo_path = os.path.join(project_root_dir, "assets", self.logo_file_name)
+
+            print(f"DEBUG (LoginView): current_file_dir: {current_file_dir}") # DEBUG
+            print(f"DEBUG (LoginView): project_root_dir (calculado): {project_root_dir}") # DEBUG
+            print(f"DEBUG (LoginView): Intentando cargar logo desde: {logo_path}") # DEBUG
+            print(f"DEBUG (LoginView): os.path.exists para el logo: {os.path.exists(logo_path)}") # DEBUG
+            
+            assets_dir_path = os.path.join(project_root_dir, "assets") # DEBUG
+            print(f"DEBUG (LoginView): os.path.exists para 'assets' en project_root: {os.path.exists(assets_dir_path)}") # DEBUG
+            if os.path.exists(assets_dir_path): # DEBUG
+                print(f"DEBUG (LoginView): Contenido de '{assets_dir_path}': {os.listdir(assets_dir_path)}") # DEBUG
+
+            if os.path.exists(logo_path):
+                pixmap = QPixmap(logo_path)
+                scaled_pixmap = pixmap.scaled(QSize(130, 130), Qt.KeepAspectRatio, Qt.SmoothTransformation) # Ajusta QSize(130,130) si es necesario
+                logo_display_label.setPixmap(scaled_pixmap)
+                logo_display_label.setStyleSheet("margin-bottom: 10px;") 
+                container_layout.addWidget(logo_display_label) 
+            else:
+                print(f"Advertencia (LoginView): Logo no encontrado en {logo_path}")
+        except Exception as e:
+            print(f"Error al intentar cargar el logo en LoginView: {e}")
+        # --- FIN: SECCIÓN DEL LOGO ---
+
+
+
+        title_label = QLabel(self.store_name)
         title_label.setObjectName("authTitle")
         title_label.setAlignment(Qt.AlignCenter)
         container_layout.addWidget(title_label)

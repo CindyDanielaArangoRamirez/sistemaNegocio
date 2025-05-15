@@ -1,10 +1,12 @@
 # app/views/main_window.py
+import os
 from PyQt5.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QPushButton, QFrame, QStackedWidget, QLabel, QSizePolicy, QMessageBox
 )
 from PyQt5.QtCore import Qt, QSize
-# from PyQt5.QtGui import QIcon, QPixmap
+from PyQt5.QtCore import QSize # Ya la tienes, verifica
+from PyQt5.QtGui import QIcon, QPixmap # Asegúrate que QIcon y QPixmap estén
 
 from .sales_view import SalesView
 from .products_view import ProductsView
@@ -17,6 +19,8 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.current_user_data = user_data
         username_display = "N/A"
+        self.store_name = "Ferretería YD"
+        self.logo_file_name = "logo_ferreteria.png.png"
         if self.current_user_data:
             try:
                 username_display = self.current_user_data['username']
@@ -27,6 +31,27 @@ class MainWindow(QMainWindow):
                     print("Advertencia (MainWindow): No se pudo obtener 'username' de user_data.")
         
         self.setWindowTitle(f"Sistema de Ferretería - Usuario: {username_display}")
+
+        # --- INICIO: ÍCONO DE LA VENTANA ---
+        try:
+            current_file_dir = os.path.dirname(os.path.abspath(__file__))
+            project_root_dir = os.path.abspath(os.path.join(current_file_dir, "..", ".."))
+            icon_path = os.path.join(project_root_dir, "assets", self.logo_file_name)
+            
+            print(f"DEBUG (MainWindow - Icon): current_file_dir: {current_file_dir}") # DEBUG
+            print(f"DEBUG (MainWindow - Icon): project_root_dir (calculado): {project_root_dir}") # DEBUG
+            print(f"DEBUG (MainWindow - Icon): Intentando cargar ícono desde: {icon_path}") # DEBUG
+            print(f"DEBUG (MainWindow - Icon): os.path.exists para el ícono: {os.path.exists(icon_path)}") # DEBUG
+
+            if os.path.exists(icon_path):
+                self.setWindowIcon(QIcon(icon_path))
+            else:
+                print(f"Advertencia (MainWindow): Ícono de ventana no encontrado en {icon_path}")
+        except Exception as e:
+            print(f"Error al establecer el ícono de la ventana: {e}")
+        # --- FIN: ÍCONO DE LA VENTANA ---
+
+
         self.showMaximized()
         self.setup_ui()
 
@@ -45,11 +70,62 @@ class MainWindow(QMainWindow):
         sidebar_internal_layout.setSpacing(8)
         sidebar_internal_layout.setAlignment(Qt.AlignTop)
 
-        logo_text_label = QLabel("Ferretería XYZ")
-        logo_text_label.setObjectName("sidebarTitle")
-        logo_text_label.setAlignment(Qt.AlignCenter)
-        logo_text_label.setStyleSheet("color: white; font-size: 16pt; font-weight: bold; padding-bottom: 15px; border-bottom: 1px solid #34495e;")
-        sidebar_internal_layout.addWidget(logo_text_label)
+        # --- INICIO: SECCIÓN DEL LOGO Y NOMBRE DE TIENDA EN SIDEBAR ---
+        logo_and_name_container = QWidget()
+        logo_and_name_layout = QVBoxLayout(logo_and_name_container)
+        logo_and_name_layout.setContentsMargins(0, 0, 0, 10) 
+        logo_and_name_layout.setSpacing(5) 
+        logo_and_name_layout.setAlignment(Qt.AlignCenter)
+
+        sidebar_logo_display_label = QLabel() 
+        sidebar_logo_display_label.setAlignment(Qt.AlignCenter)
+        try:
+            current_file_dir = os.path.dirname(os.path.abspath(__file__))
+            project_root_dir = os.path.abspath(os.path.join(current_file_dir, "..", ".."))
+            logo_path = os.path.join(project_root_dir, "assets", self.logo_file_name)
+
+            print(f"DEBUG (MainWindow - Sidebar Logo): current_file_dir: {current_file_dir}") # DEBUG
+            print(f"DEBUG (MainWindow - Sidebar Logo): project_root_dir (calculado): {project_root_dir}") # DEBUG
+            print(f"DEBUG (MainWindow - Sidebar Logo): Intentando cargar logo desde: {logo_path}") # DEBUG
+            print(f"DEBUG (MainWindow - Sidebar Logo): os.path.exists para el logo: {os.path.exists(logo_path)}") # DEBUG
+            
+            assets_dir_path = os.path.join(project_root_dir, "assets") # DEBUG
+            print(f"DEBUG (MainWindow - Sidebar Logo): os.path.exists para 'assets' en project_root: {os.path.exists(assets_dir_path)}") # DEBUG
+            if os.path.exists(assets_dir_path): # DEBUG
+                print(f"DEBUG (MainWindow - Sidebar Logo): Contenido de '{assets_dir_path}': {os.listdir(assets_dir_path)}") # DEBUG
+
+            if os.path.exists(logo_path):
+                pixmap = QPixmap(logo_path)
+                scaled_pixmap = pixmap.scaled(QSize(80, 80), Qt.KeepAspectRatio, Qt.SmoothTransformation) # Ajusta QSize(80,80) si es necesario
+                sidebar_logo_display_label.setPixmap(scaled_pixmap)
+                logo_and_name_layout.addWidget(sidebar_logo_display_label)
+            else:
+                print(f"Advertencia (MainWindow): Logo para sidebar no encontrado en {logo_path}")
+        except Exception as e:
+            print(f"Error al intentar cargar el logo en el sidebar de MainWindow: {e}")
+
+        store_name_sidebar_label = QLabel(self.store_name) 
+        store_name_sidebar_label.setObjectName("sidebarTitle") 
+        store_name_sidebar_label.setAlignment(Qt.AlignCenter)
+        store_name_sidebar_label.setStyleSheet( # Mantén o ajusta tu estilo original
+            "color: white; font-size: 14pt; font-weight: bold; padding-bottom: 5px; padding-top: 5px;"
+            # "border-bottom: 1px solid #34495e;" # Si quieres mantener el borde inferior
+        )
+        logo_and_name_layout.addWidget(store_name_sidebar_label)
+
+        sidebar_internal_layout.addWidget(logo_and_name_container)
+
+        # Línea separadora (opcional, puedes quitarla si no te gusta)
+        line_separator = QFrame()
+        line_separator.setFrameShape(QFrame.HLine)
+        line_separator.setFrameShadow(QFrame.Sunken)
+        line_separator.setFixedHeight(1)
+        line_separator.setStyleSheet("background-color: #34495e; margin-top: 5px; margin-bottom: 5px;")
+        sidebar_internal_layout.addWidget(line_separator)
+        sidebar_internal_layout.addSpacing(10) # Espacio antes de los botones de navegación
+        # --- FIN: SECCIÓN DEL LOGO Y NOMBRE DE TIENDA EN SIDEBAR ---
+
+
 
         self.sales_button = self.create_sidebar_button("📈 Realizar Venta")
         self.products_button = self.create_sidebar_button("📦 Productos")
@@ -91,13 +167,13 @@ class MainWindow(QMainWindow):
             button.setStyleSheet("""
                 QPushButton#sidebarButton {
                     background-color: #c0392b; color: white; border: none;
-                    padding: 12px; text-align: left; padding-left: 20px; font-size: 10pt;
+                    padding: 12px; text-align: left; padding-left: 20px; font-size: 15pt;
                 } QPushButton#sidebarButton:hover { background-color: #e74c3c; }""")
         else:
             button.setStyleSheet("""
                 QPushButton#sidebarButton {
                     background-color: transparent; color: #ecf0f1; border: none;
-                    padding: 12px; text-align: left; padding-left: 20px; font-size: 10pt;
+                    padding: 12px; text-align: left; padding-left: 20px; font-size: 15pt;
                 }
                 QPushButton#sidebarButton:hover { background-color: #34495e; }
                 QPushButton#sidebarButton[selected="true"] {

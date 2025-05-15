@@ -1,7 +1,7 @@
 /* Estilos generales */
 QWidget {
     font-family: 'Segoe UI', Arial, sans-serif;
-    font-size: 15.87px; /* 15% más grande */
+    font-size: 25px; /* 15% más grande */
 }
 
 /* Botones principales */
@@ -9,7 +9,7 @@ QPushButton {
     background-color: #3498db;
     color: white;
     border: none;
-    padding: 9px 14px; /* 15% más que 8px 12px */
+    padding: 18px 20px; /* 15% más que 8px 12px */
     border-radius: 4.6px; /* 15% más que 4px */
     min-width: 92px; /* 15% más que 80px */
 }
@@ -19,7 +19,7 @@ QPushButton:hover {
 }
 
 QPushButton:disabled {
-    background-color: #95a5a6;
+    background-color: #152672;
 }
 
 /* Botones de acción */
@@ -41,9 +41,9 @@ QPushButton#deleteButton:hover {
 
 /* Campos de entrada */
 QLineEdit, QComboBox, QDateEdit, QSpinBox {
-    padding: 6.9px; /* 15% más que 6px */
+    padding: 10px; /* 15% más que 6px */
     border: 1px solid #bdc3c7;
-    border-radius: 4.6px; /* 15% más que 4px */
+    border-radius: 6px; /* 15% más que 4px */
     min-height: 27.6px; /* 15% más que 24px */
 }
 
@@ -74,12 +74,15 @@ QPushButton#sidebarButton {
     text-align: left;
     padding: 11.5px 17.25px; /* 15% más que 10px 15px */
     border-radius: 0;
+    font-size: 25px; /* 15% más grande */
 }
 
 QPushButton#sidebarButton:hover {
     background-color: #34495e;
+    font-size: 25px; /* 15% más grande */
 }
 
 QPushButton#sidebarButton:checked {
     background-color: #3498db;
+    font-size: 25px; /* 15% más grande */
 }
