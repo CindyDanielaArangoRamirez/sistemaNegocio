@@ -5,8 +5,8 @@ from PyQt5.QtWidgets import (
     QDialog, QFormLayout, QSpinBox, QDoubleSpinBox, QCheckBox, QFrame,
     QCompleter # <--- IMPORTACIÓN IMPORTANTE
 )
-from PyQt5.QtCore import Qt, QStringListModel # QStringListModel para el QCompleter
-
+from PyQt5.QtCore import Qt, QStringListModel, QEvent # QStringListModel para el QCompleter
+from PyQt5.QtGui import QPalette, QColor, QIntValidator, QDoubleValidator, QValidator 
 from app.controllers.products_controller import ProductsController
 # ProductFormDialog debería estar aquí o importado si está en dialogs.py
 # class ProductFormDialog(QDialog): ... (como lo teníamos antes)
@@ -18,6 +18,8 @@ class ProductFormDialog(QDialog):
         super().__init__(parent)
         self.product_data_to_edit = product_data_to_edit
 
+        self.original_text_color = self.palette().color(QPalette.Text)
+
         if self.product_data_to_edit:
             self.setWindowTitle("Editar Producto")
         else:
@@ -25,8 +27,14 @@ class ProductFormDialog(QDialog):
         
         self.setMinimumWidth(400)
         self.init_form_ui()
+
         if self.product_data_to_edit:
             self.populate_form_for_edit()
+        else:
+            # Establecer apariencia inicial de placeholders
+            self.update_lineedit_appearance(self.quantity_lineedit, is_placeholder=True)
+            self.update_lineedit_appearance(self.purchase_price_lineedit, is_placeholder=True)
+            self.update_lineedit_appearance(self.sale_price_lineedit, is_placeholder=True)
 
     def init_form_ui(self):
         layout = QVBoxLayout(self)
@@ -36,22 +44,36 @@ class ProductFormDialog(QDialog):
         self.name_lineedit.setPlaceholderText("Ej: Martillo de Uña")
         form_layout.addRow("Nombre del Producto:", self.name_lineedit)
 
-        self.quantity_spinbox = QSpinBox()
-        self.quantity_spinbox.setRange(0, 99999)
-        self.quantity_spinbox.setSuffix(" unidades")
-        form_layout.addRow("Cantidad Disponible:", self.quantity_spinbox)
+        self.quantity_lineedit = QLineEdit()
+        self.quantity_lineedit.setPlaceholderText("Cantidad") # Placeholder textual
+        self.quantity_int_validator = QIntValidator(0, 99999, self) # Rango: 0 a 99999
+        self.quantity_lineedit.setValidator(self.quantity_int_validator)
+        form_layout.addRow("Cantidad Disponible:", self.quantity_lineedit)
 
-        self.purchase_price_spinbox = QDoubleSpinBox()
-        self.purchase_price_spinbox.setRange(0.00, 999999.99)
-        self.purchase_price_spinbox.setDecimals(2)
-        self.purchase_price_spinbox.setPrefix("$ ")
-        form_layout.addRow("Precio de Compra:", self.purchase_price_spinbox)
+        self.purchase_price_lineedit = QLineEdit()
+        self.purchase_price_lineedit.setPlaceholderText("0.00") # Placeholder textual
+        # QDoubleValidator(bottom, top, decimals, parent)
+        # Nota: QLocale puede afectar cómo QDoubleValidator interpreta decimales (',' vs '.')
+        self.purchase_price_validator = QDoubleValidator(0.00, 999999.99, 2, self)
+        self.purchase_price_validator.setNotation(QDoubleValidator.StandardNotation) # Asegura que use '.'
+        self.purchase_price_lineedit.setValidator(self.purchase_price_validator)
+        # Podríamos añadir el "$ " como un QLabel al lado o confiar en la etiqueta del formulario.
+        # Si quieres el "$ " dentro, es más complicado con QLineEdit y placeholder gris.
+        # Por simplicidad, lo omitimos del campo de entrada por ahora.
+        form_layout.addRow("Precio de Compra ($):", self.purchase_price_lineedit)
 
-        self.sale_price_spinbox = QDoubleSpinBox()
-        self.sale_price_spinbox.setRange(0.00, 999999.99)
-        self.sale_price_spinbox.setDecimals(2)
-        self.sale_price_spinbox.setPrefix("$ ")
-        form_layout.addRow("Precio de Venta:", self.sale_price_spinbox)
+
+        self.sale_price_lineedit = QLineEdit()
+        self.sale_price_lineedit.setPlaceholderText("0.00") # Placeholder textual
+        self.sale_price_validator = QDoubleValidator(0.00, 999999.99, 2, self)
+        self.sale_price_validator.setNotation(QDoubleValidator.StandardNotation)
+        self.sale_price_lineedit.setValidator(self.sale_price_validator)
+        form_layout.addRow("Precio de Venta ($):", self.sale_price_lineedit)
+
+        for le in [self.quantity_lineedit, self.purchase_price_lineedit, self.sale_price_lineedit]:
+            le.installEventFilter(self)
+            le.textChanged.connect(lambda text, line_edit=le: self.update_lineedit_appearance(line_edit))
+
         
         layout.addLayout(form_layout)
 
@@ -66,24 +88,150 @@ class ProductFormDialog(QDialog):
         button_box_layout.addWidget(self.ok_button)
         layout.addLayout(button_box_layout)
 
+
+    def set_lineedit_text_color(self, line_edit_widget, color):
+            if line_edit_widget:
+                palette = line_edit_widget.palette()
+                palette.setColor(QPalette.Text, color)
+                line_edit_widget.setPalette(palette)
+
+    def update_lineedit_appearance(self, line_edit, is_placeholder=None):
+        """Actualiza la apariencia (color de texto) de un QLineEdit."""
+        if is_placeholder is None: # Determinar si es placeholder por el texto vacío
+            is_placeholder = (line_edit.text() == "")
+            
+        if is_placeholder and not line_edit.hasFocus():
+            self.set_lineedit_text_color(line_edit, Qt.gray)
+        else:
+            self.set_lineedit_text_color(line_edit, self.original_text_color)
+
+
+    def eventFilter(self, obj, event):
+        target_line_edits = [
+            self.quantity_lineedit,
+            self.purchase_price_lineedit,
+            self.sale_price_lineedit
+        ]
+        if obj in target_line_edits:
+            if event.type() == QEvent.Type.FocusIn:
+                obj.selectAll() # QLineEdit maneja bien selectAll()
+                self.update_lineedit_appearance(obj, is_placeholder=False) # Color normal al enfocar
+            elif event.type() == QEvent.Type.FocusOut:
+                self.update_lineedit_appearance(obj) # Actualizar color al desenfocar
+            
+        return super().eventFilter(obj, event)
+
+
     def populate_form_for_edit(self):
         if self.product_data_to_edit:
             self.name_lineedit.setText(self.product_data_to_edit['name'])
-            self.quantity_spinbox.setValue(self.product_data_to_edit['quantity_available'])
-            self.purchase_price_spinbox.setValue(self.product_data_to_edit['purchase_price'])
-            self.sale_price_spinbox.setValue(self.product_data_to_edit['sale_price'])
+
+            # Para campos numéricos, necesitamos un valor por defecto si la columna pudiera no existir
+            # o si quieres manejar un None explícitamente, aunque con sqlite3.Row si la columna
+            # no está en el SELECT, dará un IndexError o KeyError.
+            # Es mejor asegurarse que el SELECT en get_product_details trae todas las columnas necesarias.
+
+            quantity_val = ''
+            if 'quantity_available' in self.product_data_to_edit.keys():
+                quantity_val = self.product_data_to_edit['quantity_available']
+            self.quantity_lineedit.setText(str(quantity_val))
+
+            purchase_price_val = 0.0
+            if 'purchase_price' in self.product_data_to_edit.keys():
+                purchase_price_val = self.product_data_to_edit['purchase_price']
+            # --- CAMBIO AQUÍ ---
+            # Formatear explícitamente a un string con dos decimales usando punto
+            self.purchase_price_lineedit.setText(f"{float(purchase_price_val):.2f}") 
+
+            sale_price_val = 0.0
+            if 'sale_price' in self.product_data_to_edit.keys():
+                sale_price_val = self.product_data_to_edit['sale_price']
+            # --- CAMBIO AQUÍ ---
+            self.sale_price_lineedit.setText(f"{float(sale_price_val):.2f}")
+            
+            # Actualizar apariencia después de poblar
+            self.update_lineedit_appearance(self.quantity_lineedit)
+            self.update_lineedit_appearance(self.purchase_price_lineedit)
+            self.update_lineedit_appearance(self.sale_price_lineedit)
 
     def get_data(self):
         name = self.name_lineedit.text().strip()
-        if not name:
+        if not name: 
             QMessageBox.warning(self, "Dato Faltante", "El nombre del producto no puede estar vacío.")
             return None
-        return {
-            'name': name,
-            'quantity_available': self.quantity_spinbox.value(),
-            'purchase_price': self.purchase_price_spinbox.value(),
-            'sale_price': self.sale_price_spinbox.value(),
-        }
+
+        # --- Obtener y validar cantidad ---
+        quantity_str = self.quantity_lineedit.text().strip()
+        quantity = 0
+        if quantity_str:
+            try:
+                temp_quantity = int(quantity_str)
+                # Validar rango para cantidad (QIntValidator también lo hace, pero por si acaso)
+                if not (0 <= temp_quantity <= 99999): # Mismo rango que tu QIntValidator
+                    QMessageBox.warning(self, "Entrada Inválida", 
+                                        "La cantidad está fuera del rango permitido (0-99999).")
+                    self.quantity_lineedit.setFocus()
+                    return None
+                quantity = temp_quantity
+            except ValueError:
+                QMessageBox.warning(self, "Entrada Inválida", 
+                                    "La cantidad ingresada no es un número entero válido.")
+                self.quantity_lineedit.setFocus()
+                return None
+        
+        # Definir el rango de precios una vez
+        min_price = 0.00
+        max_price = 999999.99
+
+        # --- Obtener y validar precio de compra ---
+        purchase_price_str = self.purchase_price_lineedit.text().strip()
+        purchase_price = 0.0
+        if purchase_price_str:
+            try:
+                # Intentar convertir directamente, normalizando la coma
+                temp_purchase_price = float(purchase_price_str.replace(',', '.'))
+                
+                # Validar el rango manualmente
+                if not (min_price <= temp_purchase_price <= max_price):
+                    QMessageBox.warning(self, "Entrada Inválida", 
+                                        f"El precio de compra está fuera del rango permitido ({min_price:.2f} - {max_price:.2f}).")
+                    self.purchase_price_lineedit.setFocus()
+                    return None
+                
+                # Redondear a 2 decimales para consistencia (opcional, pero bueno para la BD)
+                purchase_price = round(temp_purchase_price, 2)
+
+            except ValueError:
+                QMessageBox.warning(self, "Entrada Inválida", 
+                                    "El precio de compra debe ser un número decimal válido (ej. 123.45).")
+                self.purchase_price_lineedit.setFocus()
+                return None
+        
+        # --- Obtener y validar precio de venta ---
+        sale_price_str = self.sale_price_lineedit.text().strip()
+        sale_price = 0.0
+        if sale_price_str:
+            try:
+                temp_sale_price = float(sale_price_str.replace(',', '.'))
+
+                if not (min_price <= temp_sale_price <= max_price):
+                    QMessageBox.warning(self, "Entrada Inválida", 
+                                        f"El precio de venta está fuera del rango permitido ({min_price:.2f} - {max_price:.2f}).")
+                    self.sale_price_lineedit.setFocus()
+                    return None
+                
+                sale_price = round(temp_sale_price, 2)
+
+            except ValueError:
+                QMessageBox.warning(self, "Entrada Inválida", 
+                                    "El precio de venta debe ser un número decimal válido (ej. 123.45).")
+                self.sale_price_lineedit.setFocus()
+                return None
+        
+        print(f"DEBUG get_data - Datos validados: Cant: {quantity}, Compra: {purchase_price}, Venta: {sale_price}") # DEBUG FINAL
+        
+        return {'name': name, 'quantity_available': quantity,
+                'purchase_price': purchase_price, 'sale_price': sale_price}
 
     def on_accept_data(self):
         if self.get_data() is not None:

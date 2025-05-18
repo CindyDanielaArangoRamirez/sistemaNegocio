@@ -6,7 +6,6 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QDoubleValidator
-
 # BaseDialog puede permanecer como está si decides usarlo,
 # pero la última SalesView que te di no lo llama.
 # Si SalesView usa BaseDialog, entonces BaseDialog debería devolver el monto

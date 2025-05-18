@@ -7,7 +7,7 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt
 from PyQt5.QtCore import QSize
 from PyQt5.QtGui import QPixmap
-
+from utils.helpers import resource_path
 from app.controllers.auth_controller import AuthController
 from .register_view import RegisterView
 # from .forgot_password_view import ForgotPasswordView # Necesitarás crear esta vista
@@ -60,32 +60,25 @@ class LoginView(QDialog): # Cambiado de nuevo a QDialog
         logo_display_label = QLabel() 
         logo_display_label.setAlignment(Qt.AlignCenter)
         try:
-            # Estrategia de ruta: relativa al directorio de ESTE archivo (login_view.py)
-            current_file_dir = os.path.dirname(os.path.abspath(__file__))
-            project_root_dir = os.path.abspath(os.path.join(current_file_dir, "..", "..")) 
-            logo_path = os.path.join(project_root_dir, "assets", self.logo_file_name)
+            # --- USO DE resource_path PARA EL LOGO ---
+            # La ruta relativa es desde la raíz del proyecto hacia la carpeta assets
+            logo_path_resolved = resource_path(os.path.join("assets", self.logo_file_name))
+            # --- FIN USO ---
 
-            print(f"DEBUG (LoginView): current_file_dir: {current_file_dir}") # DEBUG
-            print(f"DEBUG (LoginView): project_root_dir (calculado): {project_root_dir}") # DEBUG
-            print(f"DEBUG (LoginView): Intentando cargar logo desde: {logo_path}") # DEBUG
-            print(f"DEBUG (LoginView): os.path.exists para el logo: {os.path.exists(logo_path)}") # DEBUG
-            
-            assets_dir_path = os.path.join(project_root_dir, "assets") # DEBUG
-            print(f"DEBUG (LoginView): os.path.exists para 'assets' en project_root: {os.path.exists(assets_dir_path)}") # DEBUG
-            if os.path.exists(assets_dir_path): # DEBUG
-                print(f"DEBUG (LoginView): Contenido de '{assets_dir_path}': {os.listdir(assets_dir_path)}") # DEBUG
+            # Los prints de debug son útiles, pero pueden ser comentados en producción
+            # print(f"DEBUG (LoginView): Intentando cargar logo desde (resolved): {logo_path_resolved}")
+            # print(f"DEBUG (LoginView): os.path.exists para el logo (resolved): {os.path.exists(logo_path_resolved)}")
 
-            if os.path.exists(logo_path):
-                pixmap = QPixmap(logo_path)
-                scaled_pixmap = pixmap.scaled(QSize(130, 130), Qt.KeepAspectRatio, Qt.SmoothTransformation) # Ajusta QSize(130,130) si es necesario
+            if os.path.exists(logo_path_resolved):
+                pixmap = QPixmap(logo_path_resolved)
+                scaled_pixmap = pixmap.scaled(QSize(130, 130), Qt.KeepAspectRatio, Qt.SmoothTransformation)
                 logo_display_label.setPixmap(scaled_pixmap)
                 logo_display_label.setStyleSheet("margin-bottom: 10px;") 
                 container_layout.addWidget(logo_display_label) 
             else:
-                print(f"Advertencia (LoginView): Logo no encontrado en {logo_path}")
+                print(f"Advertencia (LoginView): Logo no encontrado en {logo_path_resolved}")
         except Exception as e:
             print(f"Error al intentar cargar el logo en LoginView: {e}")
-        # --- FIN: SECCIÓN DEL LOGO ---
 
 
 
@@ -159,9 +152,24 @@ class LoginView(QDialog): # Cambiado de nuevo a QDialog
         user_data = AuthController.login_user(username, password)
 
         if user_data:
-            QMessageBox.information(self, "Inicio de Sesión Exitoso", f"¡Bienvenido de nuevo, {user_data['username']}!")
-            self.user_logged_in_data = user_data # Guardar datos para que main.py los use
-            self.accept() # Cierra el QDialog y devuelve QDialog.Accepted
+            msg_box = QMessageBox()
+            msg_box.setIcon(QMessageBox.Information)
+            msg_box.setWindowTitle("Inicio de Sesión Exitoso")
+            msg_box.setText(f"¡Bienvenido de nuevo, {user_data['username']}!")
+            
+            # Encontrar el botón OK y estilizarlo
+            ok_button = msg_box.addButton(QMessageBox.Ok)
+            ok_button.setStyleSheet("""
+                 QPushButton {
+                     background-color: #3498db; color: white;
+                     border: 1px solid #2980b9; border-radius: 4px;
+                     padding: 6px 12px; min-width: 70px;
+                 }
+                 QPushButton:hover { background-color: #2980b9; }
+             """)
+            msg_box.exec_() # Usar exec_() para diálogos modales
+            self.user_logged_in_data = user_data
+            self.accept()# Cierra el QDialog y devuelve QDialog.Accepted
         else:
             QMessageBox.warning(self, "Error de Inicio de Sesión", "Nombre de usuario o contraseña incorrectos.")
             self.password_input.clear()

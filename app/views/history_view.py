@@ -6,7 +6,6 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import QDate, Qt
 from PyQt5.QtGui import QFont # Para poner texto en negrita
-
 # Importar el controlador actualizado
 from app.controllers.history_controller import HistoryController # Usa los métodos estáticos
 
@@ -60,10 +59,16 @@ class HistoryView(QWidget):
         self.history_tree_widget.setObjectName("historyTree") # Para CSS
         self.history_tree_widget.setHeaderLabels(["Fecha / Detalle de Venta", "Cantidad", "Precio Unit.", "Subtotal"])
         header = self.history_tree_widget.header()
-        header.setSectionResizeMode(0, QHeaderView.Stretch) # Columna principal más ancha
-        header.setSectionResizeMode(1, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(3, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(0, QHeaderView.Interactive)
+        header.setSectionResizeMode(1, QHeaderView.Interactive)
+        header.setSectionResizeMode(2, QHeaderView.Interactive)
+        header.setSectionResizeMode(3, QHeaderView.Interactive)
+        header.resizeSection(0, 550) # Dale un ancho inicial generoso
+        header.resizeSection(1, 200)
+        header.resizeSection(2, 200)
+        header.resizeSection(3, 200)
+        header.setStretchLastSection(False) # Importante
+
         self.history_tree_widget.setAlternatingRowColors(True)
         self.history_tree_widget.setEditTriggers(QTreeWidget.NoEditTriggers) # No editable
         # self.history_tree_widget.doubleClicked.connect(self.show_details_for_selected_item) # Si quieres detalles al doble clic

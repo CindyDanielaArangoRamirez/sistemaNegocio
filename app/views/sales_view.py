@@ -1,5 +1,5 @@
 # app/views/sales_view.py
-import os # <--- AÑADIR ESTA IMPORTACIÓN
+import os
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
     QPushButton, QTableWidget, QTableWidgetItem, QMessageBox, QCompleter,
@@ -10,7 +10,8 @@ from PyQt5.QtGui import QDoubleValidator, QIntValidator
 
 from app.controllers.sales_controller import SalesController
 from app.controllers.products_controller import ProductsController
-from .dialogs import InvoiceDialog # Asumiendo que InvoiceDialog está en el mismo directorio
+from .dialogs import InvoiceDialog 
+from utils.helpers import resource_path # Sigue siendo útil si cargas otros recursos en esta vista
 from utils.printer import Printer
 
 class SalesView(QWidget):
@@ -21,21 +22,25 @@ class SalesView(QWidget):
         if self.current_user_data:
             try: self.user_id = self.current_user_data['id']
             except (KeyError, TypeError, IndexError): print("Advertencia (SalesView): No se pudo obtener 'id' de user_data.")
+        
         if self.user_id is None:
-            QMessageBox.critical(self, "Error Usuario", "Usuario no identificado para ventas.")
+            # Es mejor manejar esto de forma más robusta, quizás no permitiendo que SalesView se cree
+            # o mostrando un estado deshabilitado hasta que el usuario sea válido.
+            QMessageBox.critical(self, "Error Usuario", "Usuario no identificado para ventas. La funcionalidad de ventas puede estar limitada.")
+            # Considera si la aplicación debe continuar en este estado.
 
         self.current_sale_items_list = []
-        self.base_amount_registered = 0.0
+        self.base_amount_registered = 0.0 # Podrías inicializarlo a None y verificarlo
         self.product_cache_for_sale = {}
         self.all_product_names_for_completer = []
-        self.printer_service = Printer() # Instancia del Printer
-        self.store_name = "Ferretería El Progreso" # Puedes configurar esto como quieras
+        self.printer_service = Printer()
+        self.store_name = "Ferretería YD" # Nombre de tu tienda
+        self.store_nit = "9659228"       # NIT de tu tienda
+        self.store_phone = "3229220286"  # Teléfono de tu tienda
+
         self.init_ui_layout()
         self.load_products_for_autocompleter_and_cache()
         self.update_total_display()
-
-    # ... (el resto de tus métodos init_ui_layout, load_products_for_autocompleter_and_cache, etc. permanecen igual)
-    # ... (display_low_stock_warning, handle_base_registration, etc.)
 
     def init_ui_layout(self):
         main_layout = QVBoxLayout(self)
@@ -142,7 +147,6 @@ class SalesView(QWidget):
         
         completer_model = QStringListModel(self.all_product_names_for_completer)
         self.sales_view_product_completer.setModel(completer_model)
-        
         self.display_low_stock_warning()
 
     def display_low_stock_warning(self, threshold=5):
@@ -161,15 +165,13 @@ class SalesView(QWidget):
             QMessageBox.critical(self, "Error Usuario", "Usuario no identificado.")
             return
         base_text = self.base_amount_lineedit.text().strip().replace(",",".")
-        if not base_text:
-            QMessageBox.warning(self, "Campo Vacío", "Ingrese base inicial.")
-            return
+        if not base_text: QMessageBox.warning(self, "Campo Vacío", "Ingrese base inicial."); return
         try:
             base_val = float(base_text)
             if base_val < 0: raise ValueError("Base negativa.")
         except ValueError as e:
-            QMessageBox.warning(self, "Monto Inválido", f"Ingrese monto válido.\n{e}")
-            return
+            QMessageBox.warning(self, "Monto Inválido", f"Ingrese monto válido.\n{e}"); return
+        
         if SalesController.set_daily_base(base_val, self.user_id):
             self.base_amount_registered = base_val
             self.registered_base_info_label.setText(f"Base: ${self.base_amount_registered:,.2f}")
@@ -185,26 +187,17 @@ class SalesView(QWidget):
     def handle_add_item_to_current_sale(self):
         product_name_typed = self.product_name_search_lineedit.text().strip()
         quantity_text = self.item_quantity_lineedit.text().strip()
-        if not product_name_typed or not quantity_text:
-            QMessageBox.warning(self, "Campos Incompletos", "Ingrese producto y cantidad.")
-            return
+        if not product_name_typed or not quantity_text: QMessageBox.warning(self, "Campos Incompletos", "Ingrese producto y cantidad."); return
         try:
             quantity_to_add = int(quantity_text)
-            if quantity_to_add <= 0: raise ValueError("Cantidad positiva.")
+            if quantity_to_add <= 0: raise ValueError("Cantidad debe ser positiva.")
         except ValueError as e:
-            QMessageBox.warning(self, "Cantidad Inválida", f"Cantidad numérica válida.\n{e}")
-            return
-        product_data_from_cache = self.product_cache_for_sale.get(product_name_typed.lower())
-        if not product_data_from_cache:
-            QMessageBox.warning(self, "Producto Desconocido", f"'{product_name_typed}' no encontrado.")
-            return
+            QMessageBox.warning(self, "Cantidad Inválida", f"Ingrese una cantidad numérica válida.\n{e}"); return
         
-        # Verificar stock antes de agregar o actualizar
-        current_quantity_in_cart = 0
-        for item in self.current_sale_items_list:
-            if item['product_id'] == product_data_from_cache['id']:
-                current_quantity_in_cart = item['quantity_sold']
-                break
+        product_data_from_cache = self.product_cache_for_sale.get(product_name_typed.lower())
+        if not product_data_from_cache: QMessageBox.warning(self, "Producto Desconocido", f"Producto '{product_name_typed}' no encontrado en caché."); return
+        
+        current_quantity_in_cart = sum(item['quantity_sold'] for item in self.current_sale_items_list if item['product_id'] == product_data_from_cache['id'])
         
         if (current_quantity_in_cart + quantity_to_add) > product_data_from_cache['quantity_available']:
             QMessageBox.warning(self, "Stock Insuficiente",
@@ -212,18 +205,16 @@ class SalesView(QWidget):
                 f"Ya en carrito: {current_quantity_in_cart}. Solicitados ahora: {quantity_to_add}.")
             return
 
-        item_found = False
+        item_found_in_list = False
         for item in self.current_sale_items_list:
             if item['product_id'] == product_data_from_cache['id']:
-                item['quantity_sold'] += quantity_to_add # Ya verificado el stock total arriba
+                item['quantity_sold'] += quantity_to_add
                 item['subtotal'] = item['quantity_sold'] * item['price_per_unit']
-                item_found = True; break
-        if not item_found:
+                item_found_in_list = True; break
+        if not item_found_in_list:
             self.current_sale_items_list.append({
-                'product_id': product_data_from_cache['id'], 
-                'name': product_data_from_cache['name'],
-                'quantity_sold': quantity_to_add, 
-                'price_per_unit': product_data_from_cache['sale_price'],
+                'product_id': product_data_from_cache['id'], 'name': product_data_from_cache['name'],
+                'quantity_sold': quantity_to_add, 'price_per_unit': product_data_from_cache['sale_price'],
                 'subtotal': quantity_to_add * product_data_from_cache['sale_price']
             })
         self.refresh_current_sale_table()
@@ -259,9 +250,8 @@ class SalesView(QWidget):
             QMessageBox.warning(self, "Venta Vacía", "No hay productos para procesar.")
             return
 
-        total_sale_amount = self.update_total_display() # Asegura que el total esté actualizado
+        total_sale_amount = self.update_total_display() 
 
-        # Abrir el diálogo de factura/pago
         invoice_dialog = InvoiceDialog(self.current_sale_items_list, total_sale_amount, self)
         
         if invoice_dialog.exec_() == QDialog.Accepted:
@@ -270,69 +260,54 @@ class SalesView(QWidget):
             change_given = dialog_results.get("change_given", 0.0)
             should_print_invoice = dialog_results.get("print_invoice", False)
 
-            # Preparar datos para el controlador
-            items_for_controller = [
-                {'product_id': item['product_id'], 
-                 'quantity_sold': item['quantity_sold'], 
-                 'price_per_unit': item['price_per_unit']}
-                for item in self.current_sale_items_list
-            ]
+            items_for_controller = [{'product_id': i['product_id'], 'quantity_sold': i['quantity_sold'], 
+                                     'price_per_unit': i['price_per_unit']} for i in self.current_sale_items_list]
 
-            # Registrar la venta en la base de datos
-            sale_id = SalesController.process_new_sale(items_for_controller, total_sale_amount, self.base_amount_registered, self.user_id)
+            # Asegúrate de que SalesController.current_base_cash y self.user_id estén correctos
+            # La llamada a process_new_sale en SalesController fue modificada para tomar solo 3 argumentos.
+            # Si tu SalesController.process_new_sale espera self.base_amount_registered y self.user_id
+            # necesitas pasarlos o asegurar que SalesController los obtenga de otra manera (ej. desde sus atributos de clase)
+            sale_id = SalesController.process_new_sale(
+                items_to_sell=items_for_controller, 
+                total_sale_amount=total_sale_amount
+                # base_amount=self.base_amount_registered, # Si tu controlador aún lo espera
+                # user_id=self.user_id                    # Si tu controlador aún lo espera
+            )
+            # Si SalesController.process_new_sale usa SalesController.current_base_cash y 
+            # SalesController.current_user_id, no necesitas pasarlos aquí.
 
             if sale_id:
                 QMessageBox.information(self, "Venta Registrada", f"Venta ID {sale_id} ha sido procesada exitosamente.")
 
                 if should_print_invoice:
-                    # Preparar datos para la impresión (lista de tuplas)
-                    items_to_print_tuples = [
-                        (item['name'], item['quantity_sold'], item['price_per_unit'], item['subtotal'])
-                        for item in self.current_sale_items_list
-                    ]
+                    items_to_print_tuples = [(item['name'], item['quantity_sold'], item['price_per_unit'], item['subtotal'])
+                                             for item in self.current_sale_items_list]
                     
-                    # Configurar ruta del logo
-                    logo_file_name = "logo_ferreteria.png" # Asegúrate que este archivo exista
-                    # Asume que la carpeta 'assets' está en la raíz del proyecto donde se ejecuta main.py
-                    logo_path = os.path.join("assets", logo_file_name) 
-                    
-                    logo_path_to_pass = None
-                    if os.path.exists(logo_path):
-                        logo_path_to_pass = os.path.abspath(logo_path)
-                    else:
-                        # Es importante que el path al logo sea absoluto para que QTextDocument lo encuentre
-                        # si el CWD no es el esperado.
-                        # Intentar una ruta relativa desde el script de main, si es posible
-                        # Si `main.py` está en la raíz:
-                        main_script_dir = os.path.dirname(os.path.abspath(os.sys.argv[0]))
-                        potential_logo_path = os.path.join(main_script_dir, "assets", logo_file_name)
-                        if os.path.exists(potential_logo_path):
-                             logo_path_to_pass = potential_logo_path
-                        else:
-                             print(f"Advertencia: Archivo de logo no encontrado en {os.path.abspath(logo_path)} ni en {potential_logo_path}")
-
-
+                    # --- LÓGICA DEL LOGO ELIMINADA DE LA LLAMADA A PRINT_INVOICE ---
                     try:
                         print_successful = self.printer_service.print_invoice(
                             items=items_to_print_tuples,
                             total_sale=total_sale_amount,
                             paid_amount=customer_payment,
                             change_amount=change_given,
-                            logo_path=logo_path_to_pass,
-                            store_name=self.store_name 
+                            # logo_path=None, # Ya no se pasa este argumento
+                            store_name=self.store_name,
+                            store_nit=self.store_nit,
+                            store_phone=self.store_phone
                         )
                         if print_successful:
                             QMessageBox.information(self, "Impresión", "Factura enviada a la impresora.")
-                        # Si print_successful es False, la clase Printer ya habrá mostrado un error o mensaje de cancelación.
+                    except TypeError as te: # Capturar específicamente el TypeError si la firma aún no coincide
+                        QMessageBox.critical(self, "Error de Parámetro de Impresión", f"Error al llamar a la función de impresión: {te}\nAsegúrese de que printer.py no espere 'logo_path'.")
+                        print(f"TypeError en print_invoice: {te}")
                     except Exception as e:
                         QMessageBox.critical(self, "Error de Impresión Inesperado", f"Ocurrió un error al intentar imprimir: {e}")
                 
-                self.reset_for_new_sale() # Limpiar para la siguiente venta
+                self.reset_for_new_sale()
             else:
                 QMessageBox.critical(self, "Error al Registrar Venta", "No se pudo registrar la venta en la base de datos.")
         else:
             QMessageBox.information(self, "Venta Cancelada", "El proceso de finalización de venta fue cancelado.")
-
 
     def handle_clear_current_sale(self):
         if self.current_sale_items_list:
@@ -348,11 +323,8 @@ class SalesView(QWidget):
 
     def reset_for_new_sale(self):
         self.current_sale_items_list.clear()
-        self.refresh_current_sale_table() # Esto también llama a update_total_display
+        self.refresh_current_sale_table()
         self.product_name_search_lineedit.clear()
         self.item_quantity_lineedit.setText("1")
-        # No es necesario recargar todos los productos aquí si no han cambiado.
-        # self.load_products_for_autocompleter_and_cache() 
-        # Solo asegurar que las advertencias de stock bajo se actualicen si es necesario
         self.display_low_stock_warning() 
         self.product_name_search_lineedit.setFocus()

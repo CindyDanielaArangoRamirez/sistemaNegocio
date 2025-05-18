@@ -13,6 +13,7 @@ from .products_view import ProductsView
 from .history_view import HistoryView
 from .login_view import LoginView
 from PyQt5.QtWidgets import QApplication
+from utils.helpers import resource_path
 
 class MainWindow(QMainWindow):
     def __init__(self, user_data):
@@ -34,22 +35,17 @@ class MainWindow(QMainWindow):
 
         # --- INICIO: ÍCONO DE LA VENTANA ---
         try:
-            current_file_dir = os.path.dirname(os.path.abspath(__file__))
-            project_root_dir = os.path.abspath(os.path.join(current_file_dir, "..", ".."))
-            icon_path = os.path.join(project_root_dir, "assets", self.logo_file_name)
-            
-            print(f"DEBUG (MainWindow - Icon): current_file_dir: {current_file_dir}") # DEBUG
-            print(f"DEBUG (MainWindow - Icon): project_root_dir (calculado): {project_root_dir}") # DEBUG
-            print(f"DEBUG (MainWindow - Icon): Intentando cargar ícono desde: {icon_path}") # DEBUG
-            print(f"DEBUG (MainWindow - Icon): os.path.exists para el ícono: {os.path.exists(icon_path)}") # DEBUG
-
-            if os.path.exists(icon_path):
-                self.setWindowIcon(QIcon(icon_path))
+            # --- USO DE resource_path PARA EL ICONO ---
+            # Asumiendo que usas el mismo logo para el icono, o tienes un app_icon.ico
+            icon_path_resolved = resource_path(os.path.join("assets", self.logo_file_name)) # O self.icon_file_name
+            # --- FIN USO ---
+            # print(f"DEBUG (MainWindow - Icon): Intentando cargar ícono desde (resolved): {icon_path_resolved}")
+            if os.path.exists(icon_path_resolved):
+                self.setWindowIcon(QIcon(icon_path_resolved))
             else:
-                print(f"Advertencia (MainWindow): Ícono de ventana no encontrado en {icon_path}")
+                print(f"Advertencia (MainWindow): Ícono de ventana no encontrado en {icon_path_resolved}")
         except Exception as e:
             print(f"Error al establecer el ícono de la ventana: {e}")
-        # --- FIN: ÍCONO DE LA VENTANA ---
 
 
         self.showMaximized()
@@ -80,27 +76,20 @@ class MainWindow(QMainWindow):
         sidebar_logo_display_label = QLabel() 
         sidebar_logo_display_label.setAlignment(Qt.AlignCenter)
         try:
-            current_file_dir = os.path.dirname(os.path.abspath(__file__))
-            project_root_dir = os.path.abspath(os.path.join(current_file_dir, "..", ".."))
-            logo_path = os.path.join(project_root_dir, "assets", self.logo_file_name)
-
-            print(f"DEBUG (MainWindow - Sidebar Logo): current_file_dir: {current_file_dir}") # DEBUG
-            print(f"DEBUG (MainWindow - Sidebar Logo): project_root_dir (calculado): {project_root_dir}") # DEBUG
-            print(f"DEBUG (MainWindow - Sidebar Logo): Intentando cargar logo desde: {logo_path}") # DEBUG
-            print(f"DEBUG (MainWindow - Sidebar Logo): os.path.exists para el logo: {os.path.exists(logo_path)}") # DEBUG
+             # --- USO DE resource_path PARA EL LOGO DEL SIDEBAR ---
+            logo_path_resolved_sidebar = resource_path(os.path.join("assets", self.logo_file_name))
+            # --- FIN USO ---
+            # print(f"DEBUG (MainWindow - Sidebar Logo): Intentando cargar logo desde (resolved): {logo_path_resolved_sidebar}")
             
-            assets_dir_path = os.path.join(project_root_dir, "assets") # DEBUG
-            print(f"DEBUG (MainWindow - Sidebar Logo): os.path.exists para 'assets' en project_root: {os.path.exists(assets_dir_path)}") # DEBUG
-            if os.path.exists(assets_dir_path): # DEBUG
-                print(f"DEBUG (MainWindow - Sidebar Logo): Contenido de '{assets_dir_path}': {os.listdir(assets_dir_path)}") # DEBUG
-
-            if os.path.exists(logo_path):
-                pixmap = QPixmap(logo_path)
-                scaled_pixmap = pixmap.scaled(QSize(80, 80), Qt.KeepAspectRatio, Qt.SmoothTransformation) # Ajusta QSize(80,80) si es necesario
+            if os.path.exists(logo_path_resolved_sidebar):
+                pixmap = QPixmap(logo_path_resolved_sidebar)
+                # Ajusta este tamaño si es necesario para el sidebar
+                scaled_pixmap = pixmap.scaled(QSize(60, 60), Qt.KeepAspectRatio, Qt.SmoothTransformation) 
                 sidebar_logo_display_label.setPixmap(scaled_pixmap)
-                logo_and_name_layout.addWidget(sidebar_logo_display_label)
+                # Asegúrate de que se añade al layout correcto
+                logo_and_name_layout.addWidget(sidebar_logo_display_label) # Verifica que 'logo_and_name_layout' sea el correcto
             else:
-                print(f"Advertencia (MainWindow): Logo para sidebar no encontrado en {logo_path}")
+                print(f"Advertencia (MainWindow): Logo para sidebar no encontrado en {logo_path_resolved_sidebar}")
         except Exception as e:
             print(f"Error al intentar cargar el logo en el sidebar de MainWindow: {e}")
 
